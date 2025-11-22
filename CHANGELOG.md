@@ -1,10 +1,15 @@
 # Changelog
 All notable changes to the Homebridge Venstar Thermostat Plugin will be documented here.
 
+## [0.9.6] - 2025-11-22
+
+### Bug and Performance Fixes
+- Fixed a delay between controlling the thermostat accessory and the interface being updated.
+
 ## [0.9.5] - 2025-11-22
 
 ### Bug and Performance Fixes
-- Changed the way data is handled so that the homekit accessory more accurately reflects the current thermostat state
+- Changed the way data is handled so that the homekit accessory more accurately reflects the current thermostat state.
 - Fixed a warning about the plugin slowing down homebridge by polling the thermostat every 30 seconds and caching data.
 
 ## [0.9.4] - 2024-08-21

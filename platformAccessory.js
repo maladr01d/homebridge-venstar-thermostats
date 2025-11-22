@@ -70,7 +70,9 @@ class VenstarThermostatsPlatformAccessory {
     async handleFanActiveSet(value) {
         const fanValue = value ? 1 : 0;
         this.API.setControl("fan=" + fanValue);
-        this.State.fanstate = fanValue; // Update cache 
+        
+        // Immediately refresh state from thermostat
+        await this.updateAllCharacteristics();
     }
     async handleCurrentHeatingCoolingStateGet() {
         return this.State.state;
@@ -80,23 +82,9 @@ class VenstarThermostatsPlatformAccessory {
     }
     async handleTargetHeatingCoolingStateSet(value) {
         await this.API.setControl("mode=" + value);
-        this.State.mode = value; // Update cache
         
-        // Update target temperature based on new mode
-        let targetTemp;
-        switch (value) {
-            case 2:
-                targetTemp = this.State.cooltemp;
-                break;
-            case 1:
-                targetTemp = this.State.heattemp;
-                break;
-            default:
-                targetTemp = (this.State.heattemp + this.State.cooltemp) / 2;
-                break;
-        }
-        this.service.getCharacteristic(this.platform.Characteristic.TargetTemperature)
-            .updateValue(targetTemp);
+        // Immediately refresh state from thermostat
+        await this.updateAllCharacteristics();
     }
     async handleCurrentTemperatureGet() {
         return this.State.spacetemp;
@@ -117,13 +105,8 @@ class VenstarThermostatsPlatformAccessory {
         const convertedValue = this.convertTemp(value).toFixed(2).toString();
         await this.API.setControl(tempMode + "=" + convertedValue);
         
-        // Update cache with converted value
-        const celsiusValue = this.State.tempunits == 0 ? this.ftoc(parseFloat(convertedValue)) : parseFloat(convertedValue);
-        if (test.mode == 2) {
-            this.State.cooltemp = celsiusValue;
-        } else {
-            this.State.heattemp = celsiusValue;
-        }
+        // Immediately refresh state from thermostat
+        await this.updateAllCharacteristics();
     }
     async handleCoolingTemperatureGet() {
         return this.State.cooltemp;
@@ -131,7 +114,9 @@ class VenstarThermostatsPlatformAccessory {
     async handleCoolingTemperatureSet(value) {
         const convertedValue = this.convertTemp(value).toFixed(2).toString();
         await this.API.setControl("cooltemp=" + convertedValue);
-        this.State.cooltemp = value; // Update cache (already in Celsius)
+        
+        // Immediately refresh state from thermostat
+        await this.updateAllCharacteristics();
 
     }
     async handleHeatingTemperatureGet() {
@@ -140,7 +125,9 @@ class VenstarThermostatsPlatformAccessory {
     async handleHeatingTemperatureSet(value) {
         const convertedValue = this.convertTemp(value).toFixed(2).toString();
         await this.API.setControl("heattemp=" + convertedValue);
-        this.State.cooltemp = value; // Update cache (already in Celsius)
+        
+        // Immediately refresh state from thermostat
+        await this.updateAllCharacteristics();
 
     }
     async handleTemperatureDisplayUnitsGet() {

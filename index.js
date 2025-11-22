@@ -64,19 +64,3 @@ class VenstarThermostatsPlatform {
 module.exports = (api) => {
 	api.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, VenstarThermostatsPlatform);
 }
-
-/*
-module.exports = function (homebridge) {
-  //Service = homebridge.hap.Service
-  //Characteristic = homebridge.hap.Characteristic
-  //Accessory = homebridge.hap.Accessory
-  //UUID = homebridge.hap.uuid
-  homebridge.registerPlatform(
-    PLUGIN_NAME,
-    PLATFORM_NAME,
-    VenstarThermostatsPlatform,
-    true
-  )
-
-}
-  */
