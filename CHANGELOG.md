@@ -1,6 +1,14 @@
 # Changelog
 All notable changes to the Homebridge Venstar Thermostat Plugin will be documented here.
 
+## [1.0.0] - 2025-11-27
+
+### Feature Additions
+- Added support for Auto mode
+
+### Bug Fixes
+- Fixed a bug related to temperature thresholds
+
 ## [0.9.6] - 2025-11-22
 
 ### Bug and Performance Fixes

@@ -25,6 +25,9 @@ class VenstarThermostatsPlatformAccessory {
             .onGet(this.handleCurrentHeatingCoolingStateGet.bind(this));
         this.service
             .getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
+            .setProps({
+                validValues: [0, 1, 2, 3] // Off, Heat, Cool, Auto
+            })
             .onGet(this.handleTargetHeatingCoolingStateGet.bind(this))
             .onSet(this.handleTargetHeatingCoolingStateSet.bind(this));
         this.service
@@ -54,8 +57,10 @@ class VenstarThermostatsPlatformAccessory {
             .onGet(this.handleFanActiveGet.bind(this))
             .onSet(this.handleFanActiveSet.bind(this));
 
-        // set up
-        this.pullState();
+        // Initial state fetch and set temperature ranges
+        this.pullState().then(() => {
+            this.updateTemperatureRanges();
+        });
 
          // Poll thermostat every 30 seconds to keep state fresh
         this.pollInterval = setInterval(() => {
@@ -81,7 +86,34 @@ class VenstarThermostatsPlatformAccessory {
         return this.State.mode;
     }
     async handleTargetHeatingCoolingStateSet(value) {
-        await this.API.setControl("mode=" + value);
+        const state = await this.API.getInfo();
+    
+        if (value == 3) {
+            // Switching TO Auto mode - must send both heattemp and cooltemp
+            // Ensure they respect the setpointdelta
+            const deltaInCelsius = this.State.tempunits == 0 
+                ? this.ftoc(state.setpointdelta) 
+                : state.setpointdelta;
+            
+            let heatValue = state.heattemp;
+            let coolValue = state.cooltemp;
+            
+            // Ensure cooltemp > heattemp by at least setpointdelta
+            if (coolValue <= heatValue + deltaInCelsius) {
+                // Adjust to maintain proper delta
+                const midpoint = (heatValue + coolValue) / 2;
+                heatValue = midpoint - deltaInCelsius / 2;
+                coolValue = midpoint + deltaInCelsius / 2;
+            }
+            
+            const convertedHeat = heatValue.toFixed(2).toString();
+            const convertedCool = coolValue.toFixed(2).toString();
+            
+            await this.API.setControl(`mode=3&heattemp=${convertedHeat}&cooltemp=${convertedCool}`);
+        } else {
+            // Switching to Off, Heat, or Cool
+            await this.API.setControl("mode=" + value);
+        }
         
         // Immediately refresh state from thermostat
         await this.updateAllCharacteristics();
@@ -91,19 +123,44 @@ class VenstarThermostatsPlatformAccessory {
     }
     async handleTargetTemperatureGet() {
         switch (this.State.mode) {
-            case 2:
+            case 3: // Auto - return midpoint (HomeKit still queries this)
+                return (this.State.heattemp + this.State.cooltemp) / 2;
+            case 2: // Cool
                 return this.State.cooltemp;
-            case 1:
+            case 1: // Heat
                 return this.State.heattemp;
+            case 0: // Off
             default:
                 return (this.State.heattemp + this.State.cooltemp) / 2;
         }
     }
     async handleTargetTemperatureSet(value) {
-        const test = await this.API.getInfo();
-        const tempMode = test.mode == 2 ? "cooltemp" : "heattemp";
-        const convertedValue = this.convertTemp(value).toFixed(2).toString();
-        await this.API.setControl(tempMode + "=" + convertedValue);
+        const state = await this.API.getInfo();
+    
+        if (state.mode == 3) {
+            // Auto mode - this shouldn't normally be called in Auto mode
+            // as HomeKit uses HeatingThreshold and CoolingThreshold instead
+            // But if it is called, we adjust both maintaining the setpointdelta
+            const deltaInCelsius = this.State.tempunits == 0 
+                ? this.ftoc(state.setpointdelta) 
+                : state.setpointdelta;
+            
+            const heatValue = (value - deltaInCelsius / 2);
+            const coolValue = (value + deltaInCelsius / 2);
+            
+            const convertedHeat = this.convertTemp(heatValue).toFixed(2).toString();
+            const convertedCool = this.convertTemp(coolValue).toFixed(2).toString();
+            
+            await this.API.setControl(`heattemp=${convertedHeat}&cooltemp=${convertedCool}`);
+        } else if (state.mode == 2) {
+            // Cool mode
+            const convertedValue = this.convertTemp(value).toFixed(2).toString();
+            await this.API.setControl("cooltemp=" + convertedValue);
+        } else if (state.mode == 1) {
+            // Heat mode
+            const convertedValue = this.convertTemp(value).toFixed(2).toString();
+            await this.API.setControl("heattemp=" + convertedValue);
+        }
         
         // Immediately refresh state from thermostat
         await this.updateAllCharacteristics();
@@ -142,6 +199,8 @@ class VenstarThermostatsPlatformAccessory {
                 this.platform.log.debug(`Thermostat state - mode: ${res.mode}, state: ${res.state}, spacetemp: ${res.spacetemp}`);
                 this.State = res;
                 this.convertTemps();
+                // Update ranges in case they changed (rare, but possible)
+                this.updateTemperatureRanges();
                 return res;
             })
             .catch((err) => {
@@ -195,6 +254,43 @@ class VenstarThermostatsPlatformAccessory {
         } catch (error) {
             this.platform.log.error('Error updating characteristics:', error);
         }
+    }
+
+    updateTemperatureRanges() {
+        // HomeKit expects Celsius, and we've already converted in pullState()
+        const minTemp = Math.min(this.State.heattempmin, this.State.cooltempmin);
+        const maxTemp = Math.max(this.State.heattempmax, this.State.cooltempmax);
+        
+        this.platform.log.debug(
+            `Setting temperature ranges: ${minTemp}°C - ${maxTemp}°C`
+        );
+        
+        // Set overall temperature range
+        this.service
+            .getCharacteristic(this.platform.Characteristic.TargetTemperature)
+            .setProps({
+                minValue: minTemp,
+                maxValue: maxTemp,
+                minStep: 0.5
+            });
+        
+        // Set cooling threshold range
+        this.service
+            .getCharacteristic(this.platform.Characteristic.CoolingThresholdTemperature)
+            .setProps({
+                minValue: this.State.cooltempmin,
+                maxValue: this.State.cooltempmax,
+                minStep: 0.5
+            });
+        
+        // Set heating threshold range
+        this.service
+            .getCharacteristic(this.platform.Characteristic.HeatingThresholdTemperature)
+            .setProps({
+                minValue: this.State.heattempmin,
+                maxValue: this.State.heattempmax,
+                minStep: 0.5
+            });
     }
 
     ftoc = function(temperature) {

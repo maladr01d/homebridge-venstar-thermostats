@@ -21,10 +21,10 @@ class GetInfoResponse {
         this.spacetemp = 0;
         this.heattemp = 10;
         this.cooltemp = 10;
-        this.cooltempmin = 10;
-        this.cooltempmax = 35;
-        this.heattempmin = 10;
-        this.heattempmax = 25;
+        this.cooltempmin = 35;
+        this.cooltempmax = 99;
+        this.heattempmin = 35;
+        this.heattempmax = 99;
         this.setpointdelta = 0;
         this.availablemodes = 0;
     }
