@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to the Homebridge Venstar Thermostat Plugin will be documented here.
 
+## [1.0.2] - 2026-09-25
+
+### Bug Fixes
+- Fixed a fatal "TypeError: fetch failed" crash when a thermostat can't be reached on startup. The plugin now logs the error and retries on the next poll.
+- Improved connection error logging to include the thermostat address and the underlying network cause.
+
 ## [1.0.1] - 2026-09-25
 
 ### Bug Fixes

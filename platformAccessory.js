@@ -60,6 +60,11 @@ class VenstarThermostatsPlatformAccessory {
         // Initial state fetch and set temperature ranges
         this.pullState().then(() => {
             this.updateTemperatureRanges();
+        }).catch((error) => {
+            this.platform.log.error(
+                `Could not reach thermostat at ${this.uri} on startup; will retry on next poll:`,
+                error.cause || error
+            );
         });
 
          // Poll thermostat every 30 seconds to keep state fresh
@@ -265,7 +270,7 @@ class VenstarThermostatsPlatformAccessory {
             }
             
         } catch (error) {
-            this.platform.log.error('Error updating characteristics:', error);
+            this.platform.log.error(`Error updating characteristics from ${this.uri}:`, error.cause || error);
         }
     }
 
