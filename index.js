@@ -12,6 +12,8 @@ class VenstarThermostatsPlatform {
 		this.Characteristic = this.api.hap.Characteristic;
 		// this is used to track restored cached accessories
 		this.accessories = []
+		// this is used to track accessory handler instances so they can be cleaned up on shutdown
+		this.accessoryInstances = []
 		this.log.debug("Finished initializing platform:", PLATFORM_NAME);
     this.api.on("didFinishLaunching", () => {
     	log.debug("Executed didFinishLaunching callback");
@@ -33,7 +35,7 @@ class VenstarThermostatsPlatform {
 	getThermostats() {
 		if (this.config.thermostats == undefined) {
 			console.log('Thermostats must be defined in the config file')
-			return {}
+			return []
 		}
 		return this.config.thermostats
 	}
@@ -47,12 +49,12 @@ class VenstarThermostatsPlatform {
 			const existingAccessory = this.accessories.find((accessory) => accessory.UUID === uuid);
 			if (existingAccessory) {
 				this.log.info("Restoring existing accessory from cache:", device.name);
-				new platformAccessory.VenstarThermostatsPlatformAccessory(this, existingAccessory, device.ip);
+				this.accessoryInstances.push(new platformAccessory.VenstarThermostatsPlatformAccessory(this, existingAccessory, device.ip));
 			} else {
                 this.log.info("Adding new accessory:", device.name, device.ip);
                 const accessory = new this.api.platformAccessory(device.name, uuid);
                 accessory.context.device = device;
-                new platformAccessory.VenstarThermostatsPlatformAccessory(this, accessory, device.ip);
+                this.accessoryInstances.push(new platformAccessory.VenstarThermostatsPlatformAccessory(this, accessory, device.ip));
                 this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
                     accessory,
                 ]);

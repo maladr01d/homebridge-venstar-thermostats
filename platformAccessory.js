@@ -80,7 +80,20 @@ class VenstarThermostatsPlatformAccessory {
         await this.updateAllCharacteristics();
     }
     async handleCurrentHeatingCoolingStateGet() {
-        return this.State.state;
+        return this.toCurrentHeatingCoolingState(this.State.state);
+    }
+    // Venstar state: 0 = idle, 1 = heating, 2 = cooling, 3 = lockout, 4 = error.
+    // HomeKit only accepts 0 = OFF, 1 = HEAT, 2 = COOL, so lockout/error report as OFF.
+    toCurrentHeatingCoolingState(venstarState) {
+        const { OFF, HEAT, COOL } = this.platform.Characteristic.CurrentHeatingCoolingState;
+        switch (venstarState) {
+            case 1:
+                return HEAT;
+            case 2:
+                return COOL;
+            default:
+                return OFF;
+        }
     }
     async handleTargetHeatingCoolingStateGet() {
         return this.State.mode;
@@ -214,7 +227,7 @@ class VenstarThermostatsPlatformAccessory {
             
             // Update all characteristics with fresh values
             this.service.getCharacteristic(this.platform.Characteristic.CurrentHeatingCoolingState)
-                .updateValue(state.state);
+                .updateValue(this.toCurrentHeatingCoolingState(state.state));
             
             this.service.getCharacteristic(this.platform.Characteristic.TargetHeatingCoolingState)
                 .updateValue(state.mode);

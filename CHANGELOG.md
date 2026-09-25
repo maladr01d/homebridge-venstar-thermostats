@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to the Homebridge Venstar Thermostat Plugin will be documented here.
 
+## [1.0.1] - 2026-09-25
+
+### Bug Fixes
+- Fixed a crash on Homebridge shutdown/restart ("Cannot read properties of undefined (reading 'forEach')") and ensured thermostat polling is stopped on shutdown.
+- Fixed the Current Heating Cooling State warning when the thermostat reports lockout or error states.
+- Fixed a startup error when no thermostats are defined in the config.
+
 ## [1.0.0] - 2025-11-27
 
 ### Feature Additions
